@@ -5,13 +5,22 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from datetime import datetime
+import os
+
+from llm import LocalLLM
 
 
 INDEX_DIR = "index"
 LOG_FILE = "logs/queries.jsonl"
 
+os.makedirs("logs", exist_ok=True)
+
 app = FastAPI()
-model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+
+embed_model = SentenceTransformer(
+    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
+llm = LocalLLM()
 
 index = faiss.read_index(f"{INDEX_DIR}/faiss.index")
 
@@ -25,28 +34,36 @@ class Question(BaseModel):
 
 @app.post("/ask")
 def ask(question: Question):
-    query_embedding = model.encode([question.question]).astype("float32")
+    query_embedding = embed_model.encode([question.question]).astype("float32")
     distances, indices = index.search(query_embedding, k=5)
 
-    answers = []
+    retrieved_chunks = []
+    references = []
+
     for idx in indices[0]:
         doc = documents[idx]
-        answers.append({
-            "text": doc["text"],
+        retrieved_chunks.append(doc["text"])
+        references.append({
             "source": doc["source"],
             "page": doc["page"]
         })
 
-    result = {
+    context = "\n\n".join(retrieved_chunks)
+
+    answer = llm.answer(question.question, context)
+
+    response = {
         "question": question.question,
-        "answers": answers
+        "answer": answer,
+        "references": references
     }
 
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps({
             "timestamp": datetime.utcnow().isoformat(),
             "question": question.question,
-            "answers": answers
+            "answer": answer,
+            "references": references
         }, ensure_ascii=False) + "\n")
 
-    return result
+    return response
