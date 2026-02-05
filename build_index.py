@@ -34,6 +34,10 @@ def main():
                     "source": file,
                     "page": page["page"]
                 })
+                if not all_chunks:
+                    print("❌ Nebyly nalezeny žádné textové části k indexaci.")
+                    print("➡️ Zkontrolujte, že složka data/ obsahuje PDF soubory.")
+                    return
 
     embeddings = rag.embed(all_chunks)
     embeddings = np.array(embeddings).astype("float32")

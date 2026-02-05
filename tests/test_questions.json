@@ -1,0 +1,14 @@
+[
+  {
+    "question": "Jaká je doba plnění smlouvy?",
+    "expected_keywords": ["doba plnění", "lhůta", "dnů"]
+  },
+  {
+    "question": "Jaké jsou sankce za nedodržení smlouvy?",
+    "expected_keywords": ["sankce", "pokuta"]
+  },
+  {
+    "question": "Kdo je objednatelem smlouvy?",
+    "expected_keywords": ["objednatel", "Středočeský kraj"]
+  }
+]

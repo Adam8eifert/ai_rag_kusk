@@ -19,26 +19,19 @@ def run_step(description: str, command: list[str]):
 def main():
     print("🚀 Spouštím AI RAG pipeline")
 
-    # kontrola složek
     os.makedirs("data", exist_ok=True)
     os.makedirs("index", exist_ok=True)
     os.makedirs("logs", exist_ok=True)
 
-    # 1. Stažení smluv
-    run_step(
-        "Stažení PDF smluv",
-        [sys.executable, "download_agreements.py"]
-    )
-
-    # 2. Indexování dokumentů
     run_step(
         "Indexování dokumentů",
         [sys.executable, "build_index.py"]
     )
 
-    print("\n🎉 Pipeline dokončena úspěšně.")
+    print("\n🎉 Pipeline dokončena.")
     print("➡️ Pro spuštění API použij:")
     print("   uvicorn app:app --reload")
+
 
 
 if __name__ == "__main__":

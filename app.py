@@ -9,7 +9,7 @@ import os
 
 from llm import LocalLLM
 
-
+MAX_DISTANCE = 1.2
 INDEX_DIR = "index"
 LOG_FILE = "logs/queries.jsonl"
 
@@ -47,6 +47,20 @@ def ask(question: Question):
             "source": doc["source"],
             "page": doc["page"]
         })
+       
+valid_indices = [
+    idx for dist, idx in zip(distances[0], indices[0])
+    if dist < MAX_DISTANCE
+]
+
+    if not valid_indices:
+        return {
+        "question": question.question,
+        "answer": "V dostupných dokumentech nebyla nalezena relevantní informace.",
+        "references": []
+    }
+
+    }
 
     context = "\n\n".join(retrieved_chunks)
 
