@@ -1,231 +1,214 @@
-# AI RAG pipeline – práce s PDF dokumenty
+# AI RAG pipeline – dotazování nad PDF dokumenty (bez halucinací)
 
-Tento projekt implementuje **jednoduchý, ale produkčně realistický RAG (Retrieval-Augmented Generation) systém** nad lokálními PDF dokumenty (např. smlouvy). Cílem je:
+Tento projekt implementuje **deterministický, produkčně realistický RAG (Retrieval-Augmented Generation) systém**
+nad **lokálními PDF dokumenty** (např. smlouvami, interní dokumentací).
 
-* načíst a zpracovat PDF dokumenty,
-* rozdělit je na textové bloky (chunky),
-* vytvořit vektorový index pomocí embedding modelu,
-* umožnit dotazování přes API s důrazem na *strict mode* (odpovědi pouze z dat).
+Hlavním cílem je:
 
-Projekt je navržen tak, aby byl **deterministický, snadno spustitelný a čitelný** – bez závislosti na scrapování webu.
+- pracovat výhradně s uživatelem dodanými dokumenty,
+- zabránit halucinacím,
+- vracet pouze odpovědi podložené zdroji,
+- umožnit bezpečné použití v „enterprise“ prostředí.
+
+Projekt **záměrně nepoužívá generativní LLM modely při odpovídání**  
+(jedná se o *extractive RAG*).
 
 ---
 
-## Architektura projektu
+## Co tento projekt dělá
 
-```
+- načte PDF dokumenty z lokální složky,
+- extrahuje text,
+- rozdělí jej na menší bloky (chunky),
+- vytvoří embeddingy pomocí Sentence Transformers,
+- uloží vektorový index (FAISS),
+- umožní dotazování přes API,
+- odpovídá **výhradně z obsahu dokumentů**.
+
+---
+
+## Co tento projekt NENÍ
+
+- ❌ chatbot
+- ❌ generativní AI
+- ❌ model trénovaný na externích datech
+- ❌ systém pro open-ended otázky
+
+---
+
+## Architektura
+
 PDF (data/)
-   ↓
-Extrahování textu (pdfplumber)
-   ↓
+↓
+Extrakce textu (pdfplumber)
+↓
 Chunking + embeddingy (Sentence Transformers)
-   ↓
+↓
 FAISS index
-   ↓
-RAG logika (retrieval + LLM prompt)
-   ↓
+↓
+RAG logika (retrieval + extractive answering)
+↓
 FastAPI / QA služba
-```
 
-### Struktura souborů
 
-```
+---
+
+## Struktura projektu
+
 .
-├── data/                 # Vstupní PDF dokumenty
-├── build_index.py        # Vytvoření FAISS indexu z PDF
-├── rag.py                # Konsolidovaný RAG engine (retrieval + answer logic)
-├── app.py                # FastAPI aplikace (QA endpoint)
-├── requirements.txt      # Python závislosti
+├── data/ # Vstupní PDF dokumenty
+├── index/ # FAISS index + metadata
+├── build_index.py # Indexace PDF dokumentů
+├── rag.py # RAGEngine (retrieval + odpovědi)
+├── app.py # FastAPI API (/ask)
+├── llm.py # Volitelná / nepoužitá LLM vrstva (placeholder)
+├── requirements.txt
 ├── README.md
-```
 
-### Popis hlavních souborů
 
-* **build_index.py**
+---
 
-  * načte PDF z `data/`
-  * extrahuje text
-  * rozdělí text na chunky
-  * vytvoří embeddingy
-  * uloží FAISS index + metadata
+## Popis hlavních souborů
 
-* **rag.py**
+### `build_index.py`
 
-  * obsahuje `RAGEngine` — chunking, embeddingy, načtení FAISS indexu
-  * vyhledá relevantní chunky v indexu a vrátí skóre + metadata
-  * aplikační logika `answer_question` bez volání LLM: vrací buď zdrojové úryvky, nebo konzervativní odpovědi (např. `Nemám odpověď v dokumentech`, `Otázka se netýká obsahu dokumentů.` nebo v `strict` režimu `Nevím`)
-  * v `strict` režimu: automatické shrnutí odpovědi na 2-3 věty pro lepší UX (bez halucinací)
+- načte PDF soubory ze složky `data/`
+- extrahuje text
+- rozdělí text na chunky
+- vytvoří embeddingy
+- uloží:
+  - FAISS index
+  - metadata (soubor, stránka, chunk)
 
-* **app.py**
+> **Indexaci je nutné znovu spustit při změně dokumentů.**
 
-  * FastAPI aplikace
-  * endpoint `/ask`
-  * propojuje dotaz uživatele s RAG logikou
+---
+
+### `rag.py`
+
+Obsahuje třídu `RAGEngine`, která zajišťuje:
+
+- chunking a embeddingy
+- načtení FAISS indexu
+- vyhledání relevantních chunků
+- **extraktivní odpovědi bez LLM**
+- konzervativní chování při nízké podobnosti
+
+#### Chování odpovědí:
+
+- žádná relevantní data → `Nemám odpověď v dokumentech`
+- nízká podobnost →  
+  - `strict=false`: „Otázka se netýká obsahu dokumentů.“
+  - `strict=true`: `Nevím`
+- vysoká podobnost → odpověď složená **ze zdrojových úryvků**
+
+V `strict` režimu je odpověď automaticky **zkrácena na 2–3 věty**
+(zachována věcná informace, žádné halucinace).
+
+---
+
+### `app.py`
+
+- FastAPI aplikace
+- endpoint `POST /ask`
+- propojuje API s `RAGEngine`
+
+---
+
+### `llm.py`
+
+- **není používán v runtime**
+- slouží jako architektonický placeholder
+- odděluje potenciální generativní vrstvu od retrieval části
+
+> Projekt je záměrně navržen tak, aby **fungoval bez LLM**  
+> a bylo možné LLM případně doplnit bez zásahu do RAG logiky.
 
 ---
 
 ## Použité knihovny a modely
 
-### Python knihovny
+### Knihovny
 
-* `pdfplumber` – extrakce textu z PDF
-* `sentence-transformers` – embedding model
-* `faiss-cpu` – vektorový index
-* `numpy` – práce s maticemi
-* `fastapi` – API vrstva
-* `uvicorn` – ASGI server
+- `pdfplumber` – extrakce textu z PDF
+- `sentence-transformers` – embeddingy
+- `faiss-cpu` – vektorový index
+- `numpy`
+- `fastapi`
+- `uvicorn`
 
 ### Embedding model
 
-* **sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2**
+**sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2**
 
-  * multijazyčný
-  * vhodný pro češtinu
-  * rychlý a lehký
+- multijazyčný
+- vhodný pro češtinu
+- rychlý a lehký
 
 ---
 
-## Instalace a spuštění – krok za krokem
+## Instalace a spuštění
 
-### 1️⃣ Vytvoření a aktivace virtuálního prostředí
+### 1️⃣ Virtuální prostředí
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-```
-
----
-
-### 2️⃣ Instalace závislostí
-
-```bash
+2️⃣ Instalace závislostí
 pip install -r requirements.txt
-```
+3️⃣ Příprava dokumentů
+Vložte PDF soubory do složky data/:
 
-Obsah `requirements.txt` (příklad):
-
-```
-pdfplumber
-sentence-transformers
-faiss-cpu
-numpy
-fastapi
-uvicorn
-```
-
----
-
-### 3️⃣ Příprava dokumentů
-
-* vytvořte složku `data/`
-* vložte do ní **PDF dokumenty** (např. 5–10 smluv)
-
-```
 data/
 ├── smlouva_ABC.pdf
 ├── smlouva_DEF.pdf
-└── ...
-```
-
-Názvy souborů mohou být **libovolné**.
-
----
-
-### 4️⃣ Indexování dokumentů
-
-```bash
+4️⃣ Indexace dokumentů
 python build_index.py
-```
-
-Výstup:
-
-* vytvoření FAISS indexu
-* informace o počtu chunků
-
----
-
-### 5️⃣ Spuštění QA služby (API)
-
-Spusťte pomocí `uvicorn` (doporučeno):
-
-```bash
+5️⃣ Spuštění API
 uvicorn app:app --reload
-```
-
 API poběží na:
 
-```
 http://127.0.0.1:8000
-```
+Swagger UI:
 
----
-
-## Použití API – příklady dotazů
-
-### Dotaz
-
-```json
+http://127.0.0.1:8000/docs
+Použití API
+Dotaz
 POST /ask
 {
   "question": "Jaká je doba platnosti smlouvy?",
   "strict": true
 }
-```
-
-### Očekávaná odpověď (pokud je v datech)
-
-```json
+Odpověď
 {
   "answer": "Smlouva je uzavřena na dobu určitou do 31. 12. 2025.",
   "sources": [
-    {
-      "file": "smlouva_ABC.pdf",
-      "page": 3
-    }
-  ]
-}
-```
-
-### Odpovědi
-
-- Pokud není v datech odpověď: `Nemám odpověď v dokumentech`.
-- Pokud nejsou chunk-y dostatečně podobné (pod prahem), vrací se: `Otázka se netýká obsahu dokumentů.` (v `strict` režimu místo toho `Nevím`).
-- V **`strict` režimu** jsou odpovědi automaticky shrnuty na 2-3 věty pro lepší čitelnost (bez halucinací).
-
-Příklad (pokud je v datech, `strict=true`):
-
-```json
-{
-  "answer": "Smlouva je uzavřena na dobu určitou do 31. 12. 2025. Může být prodloužena na základě písemné dohody.",
-  "sources": [
-    {"file": "smlouva_ABC.pdf", "page": 3, "chunk_id": 1}
+    { "file": "smlouva_ABC.pdf", "page": 3, "chunk_id": 1 }
   ],
   "confidence": 0.87
 }
-```
+Význam confidence
+Hodnota confidence odpovídá cosine similarity mezi embeddingem dotazu
+a nejrelevantnějším chunkem.
 
----
+Strict mode (doporučeno)
+vyšší práh podobnosti
 
-## Poznámky k návrhu
+kratší odpovědi (2–3 věty)
 
-* Projekt **nepoužívá scrapování** – ingest dat je lokální
-* Cílem je stabilita, testovatelnost a kontrola nad vstupy
-* **Bez halucinací**: odpovědi vycházejí pouze z dokumentů (žádné LLM volání)
-* **Strict mode** — povinný pro produkční použití:
-  - Vyžaduje vysokou podobnost (threshold 0.45)
-  - Automaticky zkracuje odpovědi na 2-3 věty
-  - Vrací `Nevím` místo pokusů "vymýšlet" odpověď
-* Architektura odpovídá běžnému enterprise RAG řešení
+žádné domýšlení
 
----
+místo „nejistých“ odpovědí vrací Nevím
 
-## Možná rozšíření
+Poznámky k návrhu
+žádné scrapování webu
 
-* UI (např. jednoduchý frontend)
-* logování dotazů
-* per-document metadata
-* autentizace API
+žádná externí data
 
----
+žádné halucinace
 
-Autor: *Adam Seifert*
+plně auditovatelné odpovědi
+
+vhodné pro smlouvy, compliance, interní dokumenty
+
+Autor: Adam Seifert
