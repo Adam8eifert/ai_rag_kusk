@@ -1,83 +1,69 @@
-import json
-import faiss
-import numpy as np
-from fastapi import FastAPI
-from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
-from datetime import datetime
 import os
+import json
+import logging
+from datetime import datetime
+from typing import List, Optional
 
-from llm import LocalLLM
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
-MAX_DISTANCE = 1.2
+from rag import RAGEngine
+
+
+LOG_DIR = "logs"
+LOG_FILE = os.path.join(LOG_DIR, "queries.jsonl")
 INDEX_DIR = "index"
-LOG_FILE = "logs/queries.jsonl"
 
-os.makedirs("logs", exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 
-app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-embed_model = SentenceTransformer(
-    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-)
-llm = LocalLLM()
-
-index = faiss.read_index(f"{INDEX_DIR}/faiss.index")
-
-with open(f"{INDEX_DIR}/documents.json", encoding="utf-8") as f:
-    documents = json.load(f)
+app = FastAPI(title="AI RAG KUSK")
 
 
-class Question(BaseModel):
+class AskRequest(BaseModel):
     question: str
+    strict: Optional[bool] = False
+    k: Optional[int] = 5
 
 
-@app.post("/ask")
-def ask(question: Question):
-    query_embedding = embed_model.encode([question.question]).astype("float32")
-    distances, indices = index.search(query_embedding, k=5)
+class QueryLogger:
+    """Jednoduchý logger dotazů do `logs/queries.jsonl`."""
 
-    retrieved_chunks = []
-    references = []
+    def __init__(self, path: str = LOG_FILE):
+        self.path = path
 
-    for idx in indices[0]:
-        doc = documents[idx]
-        retrieved_chunks.append(doc["text"])
-        references.append({
-            "source": doc["source"],
-            "page": doc["page"]
-        })
-       
-valid_indices = [
-    idx for dist, idx in zip(distances[0], indices[0])
-    if dist < MAX_DISTANCE
-]
-
-    if not valid_indices:
-        return {
-        "question": question.question,
-        "answer": "V dostupných dokumentech nebyla nalezena relevantní informace.",
-        "references": []
-    }
-
-    }
-
-    context = "\n\n".join(retrieved_chunks)
-
-    answer = llm.answer(question.question, context)
-
-    response = {
-        "question": question.question,
-        "answer": answer,
-        "references": references
-    }
-
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(json.dumps({
+    def log(self, question: str, answer: str, sources: List[dict], confidence: float):
+        entry = {
             "timestamp": datetime.utcnow().isoformat(),
-            "question": question.question,
+            "question": question,
             "answer": answer,
-            "references": references
-        }, ensure_ascii=False) + "\n")
+            "sources": sources,
+            "confidence": confidence,
+        }
+        with open(self.path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    return response
+
+# Inicializace RAG engine (lazy load index)
+engine = RAGEngine()
+try:
+    engine.load_index(INDEX_DIR)
+    logger.info("Index načten.")
+except Exception:
+    logger.warning("Index není dostupný při startu. Spusťte build_index.py pro vytvoření indexu.")
+
+
+@app.post('/ask')
+def ask(req: AskRequest):
+    if engine.index is None:
+        raise HTTPException(status_code=503, detail="Index není dostupný. Spusťte build_index.py")
+
+    retrieved = engine.retrieve(req.question, k=req.k)
+    result = engine.answer_question(req.question, retrieved, strict=req.strict)
+
+    qlogger = QueryLogger()
+    qlogger.log(req.question, result.get('answer', ''), result.get('sources', []), result.get('confidence', 0.0))
+
+    return result

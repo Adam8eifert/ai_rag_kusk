@@ -15,7 +15,6 @@ ENV/
 *.swo
 
 # Projekt
-*.pdf
 *.index
 .env
 
