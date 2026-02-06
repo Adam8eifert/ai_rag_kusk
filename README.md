@@ -149,20 +149,20 @@ V `strict` režimu je odpověď automaticky **zkrácena na 2–3 věty**
 
 ## Instalace a spuštění
 
-1️⃣ Virtuální prostředí
+- 1️⃣ Virtuální prostředí
 python -m venv .venv
 source .venv/bin/activate
-2️⃣ Instalace závislostí
+- 2️⃣ Instalace závislostí
 pip install -r requirements.txt
-3️⃣ Příprava dokumentů
+- 3️⃣ Příprava dokumentů
 Vložte PDF soubory do složky data/:
 
 data/
 ├── smlouva_ABC.pdf
 ├── smlouva_DEF.pdf
-4️⃣ Indexace dokumentů
+- 4️⃣ Indexace dokumentů
 python build_index.py
-5️⃣ Spuštění API
+- 5️⃣ Spuštění API
 uvicorn app:app --reload
 API poběží na:
 
