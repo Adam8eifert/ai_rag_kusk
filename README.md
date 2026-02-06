@@ -157,7 +157,7 @@ pip install -r requirements.txt
 - 3️⃣ Příprava dokumentů
 Vložte PDF soubory do složky data/:
 
-data/
+- data/
 ├── smlouva_ABC.pdf
 ├── smlouva_DEF.pdf
 - 4️⃣ Indexace dokumentů
@@ -172,6 +172,7 @@ Swagger UI:
 http://127.0.0.1:8000/docs
 Použití API
 Dotaz
+'bash
 POST /ask
 {
   "question": "Jaká je doba platnosti smlouvy?",
@@ -185,28 +186,28 @@ Odpověď
   ],
   "confidence": 0.87
 }
-Význam confidence
+- Význam confidence
 Hodnota confidence odpovídá cosine similarity mezi embeddingem dotazu
 a nejrelevantnějším chunkem.
 
-Strict mode (doporučeno)
+- Strict mode (doporučeno)
 vyšší práh podobnosti
 
-kratší odpovědi (2–3 věty)
+- kratší odpovědi (2–3 věty)
 
-žádné domýšlení
+- žádné domýšlení
 
-místo „nejistých“ odpovědí vrací Nevím
+- místo „nejistých“ odpovědí vrací Nevím
 
-Poznámky k návrhu
+- Poznámky k návrhu
 žádné scrapování webu
 
-žádná externí data
+- žádná externí data
 
-žádné halucinace
+- žádné halucinace
 
-plně auditovatelné odpovědi
+- plně auditovatelné odpovědi
 
-vhodné pro smlouvy, compliance, interní dokumenty
+- vhodné pro smlouvy, compliance, interní dokumenty
 
 Autor: Adam Seifert
