@@ -163,7 +163,32 @@ class RAGEngine:
         if len(answer_text) > 2000:
             answer_text = answer_text[:2000] + "..."
 
+        # V strict režimu: zkrácení odpovědi na 2-3 věty pro lepší UX
+        if strict:
+            answer_text = self._summarize_answer(answer_text, max_sentences=3)
+
         return {"answer": answer_text, "sources": sources, "confidence": float(max_sim)}
+
+    def _summarize_answer(self, text: str, max_sentences: int = 3) -> str:
+        """Zkrátí odpověď na max_sentences vět bez LLM (heuristika).
+
+        Hledá věty (oddělené . ! ?) a vrací prvních max_sentences vět.
+        Zachovává informační hodnotu pro asistenta (bez halucinací).
+        """
+        import re
+        # Rozdělení na věty (simplifikovaně: . ! ?)
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        sentences = [s.strip() for s in sentences if s.strip()]
+
+        if len(sentences) <= max_sentences:
+            return text.strip()
+
+        # Vrátíme prvních max_sentences vět
+        summary = " ".join(sentences[:max_sentences])
+        # Ujistíme se, že skončíme správně
+        if summary and not summary.endswith(('.', '!', '?')):
+            summary += "."
+        return summary
 
 
 if __name__ == '__main__':

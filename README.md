@@ -54,6 +54,7 @@ FastAPI / QA služba
   * obsahuje `RAGEngine` — chunking, embeddingy, načtení FAISS indexu
   * vyhledá relevantní chunky v indexu a vrátí skóre + metadata
   * aplikační logika `answer_question` bez volání LLM: vrací buď zdrojové úryvky, nebo konzervativní odpovědi (např. `Nemám odpověď v dokumentech`, `Otázka se netýká obsahu dokumentů.` nebo v `strict` režimu `Nevím`)
+  * v `strict` režimu: automatické shrnutí odpovědi na 2-3 věty pro lepší UX (bez halucinací)
 
 * **app.py**
 
@@ -189,12 +190,13 @@ POST /ask
 
 - Pokud není v datech odpověď: `Nemám odpověď v dokumentech`.
 - Pokud nejsou chunk-y dostatečně podobné (pod prahem), vrací se: `Otázka se netýká obsahu dokumentů.` (v `strict` režimu místo toho `Nevím`).
+- V **`strict` režimu** jsou odpovědi automaticky shrnuty na 2-3 věty pro lepší čitelnost (bez halucinací).
 
-Příklad (pokud je v datech):
+Příklad (pokud je v datech, `strict=true`):
 
 ```json
 {
-  "answer": "(úryvek z relevantních chunků)",
+  "answer": "Smlouva je uzavřena na dobu určitou do 31. 12. 2025. Může být prodloužena na základě písemné dohody.",
   "sources": [
     {"file": "smlouva_ABC.pdf", "page": 3, "chunk_id": 1}
   ],
@@ -206,9 +208,13 @@ Příklad (pokud je v datech):
 
 ## Poznámky k návrhu
 
-* Projekt **záměrně nepoužívá scrapování** – ingest dat je lokální
+* Projekt **nepoužívá scrapování** – ingest dat je lokální
 * Cílem je stabilita, testovatelnost a kontrola nad vstupy
-* Strict mode zabraňuje halucinacím LLM
+* **Bez halucinací**: odpovědi vycházejí pouze z dokumentů (žádné LLM volání)
+* **Strict mode** — povinný pro produkční použití:
+  - Vyžaduje vysokou podobnost (threshold 0.45)
+  - Automaticky zkracuje odpovědi na 2-3 věty
+  - Vrací `Nevím` místo pokusů "vymýšlet" odpověď
 * Architektura odpovídá běžnému enterprise RAG řešení
 
 ---
