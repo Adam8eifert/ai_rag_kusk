@@ -1,14 +1,24 @@
 [
   {
-    "question": "Jaká je doba plnění smlouvy?",
-    "expected_keywords": ["doba plnění", "lhůta", "dnů"]
+    "question": "Jaká je doba plnění uvedená ve smlouvě?",
+    "expected_keywords": ["doba plnění", "lhůta", "dnů", "měsíc"]
   },
   {
-    "question": "Jaké jsou sankce za nedodržení smlouvy?",
-    "expected_keywords": ["sankce", "pokuta"]
+    "question": "Jaká je cena plnění uvedená ve smlouvě?",
+    "expected_keywords": ["cena", "Kč", "bez DPH", "s DPH"]
   },
   {
-    "question": "Kdo je objednatelem smlouvy?",
-    "expected_keywords": ["objednatel", "Středočeský kraj"]
+    "question": "Jaké sankce jsou uvedeny v případě porušení smlouvy?",
+    "expected_keywords": ["sankce", "pokuta", "smluvní pokuta"]
+  },
+  {
+    "question": "Kdy smlouva nabývá účinnosti?",
+    "expected_keywords": ["účinnost", "nabývá účinnosti", "dnem"]
+  },
+  {
+    "question": "Jakým způsobem může být smlouva ukončena?",
+    "expected_keywords": ["ukončení", "výpověď", "odstoupení"]
   }
 ]
+
+

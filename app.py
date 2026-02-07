@@ -26,6 +26,7 @@ class AskRequest(BaseModel):
     question: str
     strict: Optional[bool] = False
     k: Optional[int] = 5
+    use_llm: Optional[bool] = True  # Nový parametr: povoli/zakaže LLM syntetizaci
 
 
 class QueryLogger:
@@ -57,12 +58,24 @@ except Exception:
 
 @app.post('/ask')
 def ask(req: AskRequest):
+    """
+    Endpoint: FAISS retrieve → LLM synthesize → odpověď.
+    
+    Flow:
+    1. Retrieve top-k relevantních chunků
+    2. Pokud něco najdeme, syntetizuj odpověď pomocí LLM
+    3. Pokud nic, fallback odpověď
+    """
     if engine.index is None:
         raise HTTPException(status_code=503, detail="Index není dostupný. Spusťte build_index.py")
 
+    # 1️⃣ Retrieval (FAISS)
     retrieved = engine.retrieve(req.question, k=req.k)
-    result = engine.answer_question(req.question, retrieved, strict=req.strict)
 
+    # 2️⃣ Syntetizace (LLM)
+    result = engine.synthesize_answer(req.question, retrieved, use_llm=req.use_llm)
+
+    # 3️⃣ Logging
     qlogger = QueryLogger()
     qlogger.log(req.question, result.get('answer', ''), result.get('sources', []), result.get('confidence', 0.0))
 

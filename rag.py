@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from rules import QUESTION_RULES
 
 
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -147,50 +148,96 @@ class RAGEngine:
         return results
 
     def answer_question(self, question: str, retrieved: List[Dict[str, Any]], strict: bool = False, threshold: float = 0.45, top_k_texts: int = 3) -> Dict[str, Any]:
-        """Aplikační logika odpovědí bez externího LLM.
+        # Přepsaná logika: tvrdá pravidla přes `rules.py`
+        # Signatura: strict=True default, k param je počet retrievených chunků
+        qtype = detect_question_type(question)
 
-        - Pokud nejsou retrieved: vrací `Nemám odpověď v dokumentech`.
-        - Pokud max_similarity < threshold: v `strict` režimu vrací `Nevím`, jinak `Otázka se netýká obsahu dokumentů.`
-        - Jinak vrátí konkatenaci nejrelevantnějších chunků jako odpověď.
+        if qtype is None:
+            return {"answer": "Nevím.", "sources": [], "confidence": 0.0}
+
+        rules = QUESTION_RULES[qtype]
+
+        # 2️⃣ Retrieval
+        results = self.retrieve(question, k=top_k_texts)
+
+        # 3️⃣ Filtrace podle pravidel
+        allowed = []
+        for r in results:
+            if (
+                r.get("score", 0.0) >= rules.get("min_similarity", 0.0)
+                and is_chunk_allowed(r.get("text", ""), rules)
+            ):
+                allowed.append(r)
+
+        # 4️⃣ Nic neprošlo → konec
+        if not allowed:
+            return {
+                "answer": "Požadovaná informace není v dokumentech explicitně uvedena.",
+                "sources": [],
+                "confidence": 0.0,
+            }
+
+        # 5️⃣ Vezmeme jen nejlepší chunk
+        best = sorted(allowed, key=lambda x: x.get("score", 0.0), reverse=True)[0]
+
+        return {
+            "answer": best.get("text", "").strip(),
+            "sources": [{
+                "file": best.get("file"),
+                "page": best.get("page"),
+                "chunk_id": best.get("chunk_id"),
+            }],
+            "confidence": round(best.get("score", 0.0), 3),
+        }
+
+    def synthesize_answer(self, question: str, retrieved: List[Dict[str, Any]], use_llm: bool = True) -> Dict[str, Any]:
+        """Syntetizuje odpověď: retrieve → context → LLM synthesis.
+        
+        Args:
+            question: Uživatelská otázka
+            retrieved: Top-k retrieve chunky z FAISS
+            use_llm: Pokud True, použije LLM; jinak vrátí syrové chunky
+        
+        Returns:
+            Dict s answer, sources, confidence
         """
+        # Fallback pokud nic není
         if not retrieved:
-            return {"answer": "Nemám odpověď v dokumentech", "sources": [], "confidence": 0.0}
+            return {
+                "answer": "Požadovaná informace není v dokumentech explicitně uvedena.",
+                "sources": [],
+                "confidence": 0.0,
+            }
 
-        max_sim = max(r.get('score', 0.0) for r in retrieved)
-        if max_sim < threshold:
-            if strict:
-                return {"answer": "Nevím", "sources": [], "confidence": float(max_sim)}
-            return {"answer": "Otázka se netýká obsahu dokumentů.", "sources": [], "confidence": float(max_sim)}
+        # Sestavíme kontext ze všech chunků
+        context = "\n---\n".join([r.get("text", "") for r in retrieved])
+        
+        # Počet relevantních chunků jako konfidence
+        avg_score = sum(r.get("score", 0.0) for r in retrieved) / len(retrieved) if retrieved else 0.0
 
-        # Sestavíme odpověď jako spojení top-N chunků (bez halucinací)
-        # Pokud jde o entity-typ otázky, použijeme extrakci jedné věty z nejlepšího chunku
-        if self.is_entity_question(question):
-            best = retrieved[0]
-            # Pokusíme se získat klíčové slovo z otázky (např. objednatel)
-            ql = question.lower()
-            entity_keywords = ['objednatel', 'objednatelem', 'dodavatel', 'zadavatelem']
-            found_kw = None
-            for kw in entity_keywords:
-                if kw in ql:
-                    found_kw = kw
-                    break
-
-            answer_text = self._extract_entity_sentence(best.get('text', ''), keyword=found_kw)
-            sources = [{"file": best.get('file'), "page": best.get('page'), "chunk_id": best.get('chunk_id')}]
+        if use_llm:
+            try:
+                from llm import LLMWrapper
+                llm = LLMWrapper(use_openai=True)
+                answer_text = llm.synthesize(question, context)
+            except Exception as e:
+                print(f"LLM chyba: {e}, fallback na syrový kontext.")
+                answer_text = context[:500] + "..." if len(context) > 500 else context
         else:
-            top = retrieved[:top_k_texts]
-            answer_text = "\n\n---\n\n".join([t.get('text', '') for t in top])
-            sources = [{"file": t.get('file'), "page": t.get('page'), "chunk_id": t.get('chunk_id')} for t in top]
+            answer_text = context
 
-        # Ořez pro bezpečnost
-        if len(answer_text) > 2000:
-            answer_text = answer_text[:2000] + "..."
-
-        # V strict režimu: zkrácení odpovědi na 2-3 věty pro lepší UX
-        if strict:
-            answer_text = self._summarize_answer(answer_text, max_sentences=3)
-
-        return {"answer": answer_text, "sources": sources, "confidence": float(max_sim)}
+        return {
+            "answer": answer_text.strip(),
+            "sources": [
+                {
+                    "file": r.get("file"),
+                    "page": r.get("page"),
+                    "chunk_id": r.get("chunk_id"),
+                }
+                for r in retrieved
+            ],
+            "confidence": round(avg_score, 3),
+        }
 
     def _summarize_answer(self, text: str, max_sentences: int = 3) -> str:
         """Zkrátí odpověď na max_sentences vět bez LLM (heuristika).
@@ -241,6 +288,25 @@ class RAGEngine:
 
         # Fallback: první věta
         return sentences[0] if sentences else text.strip()
+
+
+def detect_question_type(question: str) -> str | None:
+    """Detekuje typ otázky podle `QUESTION_RULES` z rules.py.
+
+    Vrací klíč z QUESTION_RULES nebo None pokud není shoda.
+    """
+    q = (question or "").lower()
+    for qtype, cfg in QUESTION_RULES.items():
+        for kw in cfg.get("question_keywords", []):
+            if kw in q:
+                return qtype
+    return None
+
+
+def is_chunk_allowed(chunk_text: str, rules: dict) -> bool:
+    """Tvrdá filtrace chunků podle `section_keywords` v pravidlech."""
+    text = (chunk_text or "").lower()
+    return any(kw in text for kw in rules.get("section_keywords", []))
 
 
 if __name__ == '__main__':
