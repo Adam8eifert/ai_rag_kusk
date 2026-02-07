@@ -16,6 +16,14 @@ from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
+# Heuristika pro detekci otázek, které očekávají krátkou entitu jako odpověď
+ENTITY_QUESTION_PREFIXES = (
+    "kdo je",
+    "jak se jmenuje",
+    "kdo vystupuje",
+    "kdo je uveden",
+)
+
 
 class RAGEngine:
     """Konsolidovaný RAG engine.
@@ -155,9 +163,24 @@ class RAGEngine:
             return {"answer": "Otázka se netýká obsahu dokumentů.", "sources": [], "confidence": float(max_sim)}
 
         # Sestavíme odpověď jako spojení top-N chunků (bez halucinací)
-        top = retrieved[:top_k_texts]
-        answer_text = "\n\n---\n\n".join([t.get('text', '') for t in top])
-        sources = [{"file": t.get('file'), "page": t.get('page'), "chunk_id": t.get('chunk_id')} for t in top]
+        # Pokud jde o entity-typ otázky, použijeme extrakci jedné věty z nejlepšího chunku
+        if self.is_entity_question(question):
+            best = retrieved[0]
+            # Pokusíme se získat klíčové slovo z otázky (např. objednatel)
+            ql = question.lower()
+            entity_keywords = ['objednatel', 'objednatelem', 'dodavatel', 'zadavatelem']
+            found_kw = None
+            for kw in entity_keywords:
+                if kw in ql:
+                    found_kw = kw
+                    break
+
+            answer_text = self._extract_entity_sentence(best.get('text', ''), keyword=found_kw)
+            sources = [{"file": best.get('file'), "page": best.get('page'), "chunk_id": best.get('chunk_id')}]
+        else:
+            top = retrieved[:top_k_texts]
+            answer_text = "\n\n---\n\n".join([t.get('text', '') for t in top])
+            sources = [{"file": t.get('file'), "page": t.get('page'), "chunk_id": t.get('chunk_id')} for t in top]
 
         # Ořez pro bezpečnost
         if len(answer_text) > 2000:
@@ -189,6 +212,35 @@ class RAGEngine:
         if summary and not summary.endswith(('.', '!', '?')):
             summary += "."
         return summary
+
+    def is_entity_question(self, question: str) -> bool:
+        """Rozpozná jednoduché entity-type otázky podle prefixů.
+
+        Vrací True, pokud otázka začíná některou z předdefinovaných frází.
+        """
+        q = (question or "").lower().strip()
+        return any(q.startswith(p) for p in ENTITY_QUESTION_PREFIXES)
+
+    def _extract_entity_sentence(self, text: str, keyword: Optional[str] = None) -> str:
+        """Extrahuje nejrelevantnější větu z textu.
+
+        Pokud je zadané `keyword`, pokusí se najít větu obsahující toto slovo,
+        jinak vrátí první větu.
+        """
+        import re
+        if not text:
+            return ""
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        sentences = [s.strip() for s in sentences if s.strip()]
+
+        if keyword:
+            k = keyword.lower()
+            for s in sentences:
+                if k in s.lower():
+                    return s
+
+        # Fallback: první věta
+        return sentences[0] if sentences else text.strip()
 
 
 if __name__ == '__main__':
