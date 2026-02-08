@@ -1,5 +1,4 @@
 [
-  // Otázky, které URČITĚ projdou pro smlouvu MERCI, s.r.o.
   {
     "question": "Jaká je celková cena za laboratorní pomůcky bez DPH?",
     "expected_keywords": ["cena", "bez DPH", "435 056"]
@@ -20,7 +19,6 @@
     "question": "Jaké laboratorní pomůcky jsou předmětem smlouvy?",
     "expected_keywords": ["čidlo vodivosti", "pH čidlo", "mikroskop", "analytické váhy"]
   },
-  // Otázky, které URČITĚ projdou pro smlouvu HELAGO-CZ, s.r.o.
   {
     "question": "Jaká je celková cena za učební pomůcky bez DPH?",
     "expected_keywords": ["cena", "bez DPH", "950.000"]
@@ -41,7 +39,6 @@
     "question": "Jaké učební pomůcky jsou předmětem smlouvy?",
     "expected_keywords": ["výukový model koně", "model pohlavních orgánů klisny", "Smart model reprodukčních orgánů krávy"]
   },
-  // Otázky, které URČITĚ projdou pro SOD Terapeutické komunity
   {
     "question": "Jaká je celková cena za opravu oplocení bez DPH?",
     "expected_keywords": ["cena", "bez DPH", "1.390.027,25"]
@@ -63,7 +60,6 @@
     "expected_keywords": ["oprava oplocení", "stavební práce", "Technická specifikace"]
   },
 
-  // Otázky, které URČITĚ neprojdou (vylučovací)
   {
     "question": "Jaká je teplota v Pekingu?",
     "expected_answer": "Požadovaná informace není v dokumentech."
@@ -83,8 +79,7 @@
   {
     "question": "Jaká je obvyklá cena tohoto typu plnění na trhu?",
     "expected_answer": "Požadovaná informace není v dokumentech."
-  }
-  // Otázky, které projdou (jsou v datech, mají klíčová slova)
+  },
   {
     "question": "Jaká je záruční doba?",
     "expected_keywords": ["záruční doba", "měsíc"]
@@ -106,7 +101,6 @@
     "expected_keywords": ["počíná", "ode dne", "předání"]
   },
 
-  // Otázky, které neprojdou (mimo scope, chybí klíčová slova)
   {
     "question": "Kdo je skutečným vlastníkem firmy?",
     "expected_answer": "Požadovaná informace není v dokumentech."

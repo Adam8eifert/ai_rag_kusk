@@ -423,7 +423,7 @@ class RAGEngine:
         # 2️⃣ HARD FACTUAL GATE: top_score >= 0.50?
         # ────────────────────────────────────────────────────────────
         top_score = retrieved[0].get("score", 0.0)
-        HARD_GATE_THRESHOLD = 0.50  # Sníženo pro lepší recall, odpovídá compliance testům
+        HARD_GATE_THRESHOLD = 0.30  # Ještě nižší threshold pro maximální recall
         
         if top_score < HARD_GATE_THRESHOLD:
             # ❌ Skóre příliš nízké = informace není dostatečně podložená
@@ -543,10 +543,8 @@ class RAGEngine:
         matched = sum(1 for w in q_words if w in c_lower)
         
         # Povinná pravidla:
-        # - Alespoň 2 keywords musí být v contextu
-        # - Nebo alespoň 60% keywords
-        min_match = max(2, len(q_words) // 2)  # Alespoň 2 nebo 50%
-        
+        # - Alespoň 1 keyword musí být v contextu (pro vyšší recall)
+        min_match = 1
         return matched >= min_match
 
     def _summarize_answer(self, text: str, max_sentences: int = 3) -> str:
