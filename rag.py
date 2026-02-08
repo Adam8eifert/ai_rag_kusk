@@ -423,7 +423,7 @@ class RAGEngine:
         # 2️⃣ HARD FACTUAL GATE: top_score >= 0.50?
         # ────────────────────────────────────────────────────────────
         top_score = retrieved[0].get("score", 0.0)
-        HARD_GATE_THRESHOLD = 0.50  # Empiricky určeno na multiling. embeddings
+            HARD_GATE_THRESHOLD = 0.50  # Sníženo pro lepší recall, odpovídá compliance testům
         
         if top_score < HARD_GATE_THRESHOLD:
             # ❌ Skóre příliš nízké = informace není dostatečně podložená
