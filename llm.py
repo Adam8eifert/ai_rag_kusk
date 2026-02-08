@@ -31,16 +31,13 @@ COMPRESSION_PROMPT = """
 Jsi kompresor textu pro právní dokumenty.
 
 PRAVIDLA:
-1. Nepřidávej žádné nové informace
-2. Odpovídej POUZE z poskytnutého textu
-3. Shrnutí max 3 věty
-4. Zachovej faktické znění (konkrétní čísla, termíny, pojmy)
-5. Pokud nejsi si jistý, než přidávej text, raději vynech
-
-VSTUP: Relevantní texty z dokumentu
-VÝSTUP: Stručné shrnutí (max 3 věty) v českém jazyce
-
-Pokud se nemůžeš rozhodnout, vrať """.strip()
+1. Nepřidávej žádné nové informace.
+2. Odpovídej pouze z poskytnutého textu.
+3. Shrň odpověď do maximálně 3 vět.
+4. Zachovej faktické znění (čísla, termíny, pojmy).
+5. Pokud je odpověď aspoň částečně v textu, odpověz.
+6. Pokud odpověď vůbec není v textu, vrať prázdný výstup.
+""".strip()
 
 # Místní LLM: importujme s graceful fallback
 try:
@@ -80,6 +77,7 @@ class LLMWrapper:
             model: Model name pro OpenAI (default: "gpt-3.5-turbo").
                            Lze změnit na "gpt-4" pro lepší kvalitu (ale dražší).
         """
+        global LOCAL_LLM_AVAILABLE
         # Rozhodnutí: můžeme vůbec použít OpenAI?
         self.use_openai = use_openai and (api_key or os.getenv("OPENAI_API_KEY"))
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
@@ -175,43 +173,61 @@ class LLMWrapper:
             return " ".join(sentences[:3])
 
     def _compress_openai(self, question: str, context: str) -> str:
-        """OpenAI kompresor pomocí GPT-3.5-turbo."""
+        """OpenAI kompresor pomocí GPT-3.5-turbo, vždy v češtině."""
         try:
             response = self.openai_client.chat.completions.create(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": COMPRESSION_PROMPT.strip()},
+                    {"role": "system", "content": COMPRESSION_PROMPT.strip() + "\nOdpovídej vždy výhradně v českém jazyce. Pokud odpověď není v češtině, vrať prázdný výstup."},
                     {
                         "role": "user",
-                        "content": f"Zhrnuj tento text max 3 věty (jen zkrácení, bez přidávání):\n\n{context}",
+                        "content": f"Zhrnuj tento text max 3 věty (jen zkrácení, bez přidávání, odpověz pouze česky!):\n\n{context}",
                     },
                 ],
                 max_tokens=150,
                 temperature=0.0,  # Deterministic: žádná kreativita
             )
-            return response.choices[0].message.content.strip() or context
+            answer = response.choices[0].message.content.strip() or context
+            # Pokud odpověď není v češtině, vrať fallback
+            if self._is_english(answer):
+                return "Požadovaná informace není v dokumentech."
+            return answer
         except Exception as e:
             print(f"⚠ OpenAI kompresor chyba: {e}, fallback na raw text")
             return context
 
     def _compress_local(self, question: str, context: str) -> str:
-        """FLAN-T5 kompresor (offline mode)."""
+        """FLAN-T5 kompresor (offline mode), vždy v češtině."""
         prompt = (
-            f"{COMPRESSION_PROMPT.strip()}\n\n"
-            f"Text k shrnutí (max 3 věty):\n{context}\n\nZhrnuti:"
+            f"{COMPRESSION_PROMPT.strip()}\nOdpovídej vždy výhradně v českém jazyce. Pokud odpověď není v češtině, vrať prázdný výstup.\n\n"
+            f"Text k shrnutí (max 3 věty, pouze česky!):\n{context}\n\nZhrnutí:"
         )
-        
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",
             truncation=True,
             max_length=512,
         )
-        
         with torch.no_grad():
             output = self.model.generate(**inputs, max_new_tokens=100)
-        
-        return self.tokenizer.decode(output[0], skip_special_tokens=True) or context
+        answer = self.tokenizer.decode(output[0], skip_special_tokens=True) or context
+        if self._is_english(answer):
+            return "Požadovaná informace není v dokumentech."
+        return answer
+
+    def _is_english(self, text: str) -> bool:
+        """Jednoduchá detekce, zda je text v angličtině (heuristika)."""
+        import re
+        # Pokud je většina slov v textu v ASCII a obsahuje typická anglická slova, považuj za angličtinu
+        if not text:
+            return False
+        ascii_ratio = sum(1 for c in text if ord(c) < 128) / max(1, len(text))
+        # Heuristika: pokud je >90% ASCII a obsahuje typická slova
+        if ascii_ratio > 0.9:
+            common_en = re.compile(r"\b(the|and|of|to|in|is|that|may|by|agreement|terminated|validity|can|be|for|with|on|as|from|at|this|a|an|it|are|was|were|will|would|should|could|has|have|had|but|not|or|if|then|else|when|where|which|who|what|how|why|whose|whom|do|does|did|done|so|such|than|too|very|also|just|now|only|over|out|up|down|off|again|further|once|here|there|all|any|both|each|few|more|most|other|some|such|no|nor|not|own|same|so|than|too|very|s|t|can|will|just|don|should|now)\b", re.I)
+            if common_en.search(text):
+                return True
+        return False
 
     def _synthesize_openai(self, question: str, context: str) -> str:
         """Volá OpenAI API s instrukcí pro extrakci bez halucinací.

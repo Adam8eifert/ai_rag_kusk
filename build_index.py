@@ -39,7 +39,7 @@ def main():
     engine = RAGEngine()
     
     print("📁 Budování indexu z PDF souborů v 'data/' adresáři...")
-    engine.build_index(data_dir='data', index_dir='index')
+    engine.build_index(data_dir='data', index_dir='index', chunk_size=400, overlap=100)
     
     print("✅ Index byl úspěšně vytvořen!")
     print("   - Vektory: index/faiss.index")

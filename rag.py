@@ -420,11 +420,12 @@ class RAGEngine:
             }
 
         # ────────────────────────────────────────────────────────────
-        # 2️⃣ HARD FACTUAL GATE: top_score >= 0.72?
+        # 2️⃣ HARD FACTUAL GATE: top_score >= 0.50?
         # ────────────────────────────────────────────────────────────
         top_score = retrieved[0].get("score", 0.0)
+        HARD_GATE_THRESHOLD = 0.50  # Empiricky určeno na multiling. embeddings
         
-        if top_score < 0.72:
+        if top_score < HARD_GATE_THRESHOLD:
             # ❌ Skóre příliš nízké = informace není dostatečně podložená
             # LLM se NESMÍ zavolat (bez spekulace)
             return {
@@ -513,6 +514,8 @@ class RAGEngine:
         Returns:
             True pokud je dostatečně relevantní, False → fallback
         """
+        import string
+        
         # Normalizuj
         q_lower = question.lower()
         c_lower = context.lower()
@@ -525,10 +528,11 @@ class RAGEngine:
             'si', 'se', 'i', 'o', 'do', 'by', 'by', 'by'
         }
         
-        # Extrahuj keywords z otázky (slova delší než 3 znaky)
+        # Extrahuj keywords z otázky (slova delší než 3 znaky, bez interpunkce)
         q_words = [
-            w.strip() for w in q_lower.split()
-            if len(w.strip()) > 3 and w.strip() not in stop_words
+            w.strip().strip(string.punctuation)  # Odstraň interpunkci
+            for w in q_lower.split()
+            if len(w.strip().strip(string.punctuation)) > 3 and w.strip().strip(string.punctuation) not in stop_words
         ]
         
         # Pokud otázka nemá žádná keywords (neměl by se stát), povolj

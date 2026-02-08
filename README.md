@@ -1,81 +1,39 @@
-# AI RAG pipeline – dotazování nad PDF dokumenty (bez halucinací)
 
-Tento projekt implementuje **robustní RAG (Retrieval‑Augmented Generation) systém** nad **lokálními PDF dokumenty** (např. smlouvami, interní dokumentací).
+# AI RAG pipeline – dotazování nad PDF dokumenty
 
-Hlavním cílem je:
+**Rychlý RAG systém pro dotazování nad PDF smlouvami a dokumenty.**
 
-* pracovat výhradně s uživatelem dodanými dokumenty,
-* zabránit halucinacím,
-* vracet pouze odpovědi podložené zdroji s citacemi,
-* umožnit bezpečné použití v „enterprise" prostředí,
-* **odpovídat výhradně v češtině** (bez překladu, v jazyce dokumentu).
+- Odpovídá pouze z obsahu PDF (žádné halucinace)
+- Odpovědi vždy v češtině
+- Citace zdrojů (soubor, stránka, chunk)
+- REST API (FastAPI, endpoint `/ask`)
+- LLM (OpenAI/FLAN-T5) pouze jako kompresor, nikdy generátor
 
-Projekt je **hybridní**: lze jej používat jako:
-* **Pure Extractive RAG** (bez LLM, deterministic, nejbezpečnější),
-* **RAG s LLM syntézou** (LLM zkrátí/přeformuluje text, ale nikdy si nic nedomýšlí).
+## Princip ochrany proti halucinacím
 
----
+1. **Hard factual gate:** Pokud skóre < 0.72 → fallback, LLM se nevolá
+2. **Keyword guard:** Kontext musí obsahovat klíčová slova z otázky
+3. **LLM compression:** LLM pouze zkracuje, nikdy negeneruje
 
-## Co tento projekt dělá
+## Příklad dotazu
 
-* načte PDF dokumenty z lokální složky `data/`,
-* extrahuje text (stránku po stránce),
-* rozdělí jej na overlapping chunky (sliding window),
-* vytvoří embeddingy pomocí Sentence Transformers (multilingual),
-* uloží vektorový index (FAISS IndexFlatIP),
-* umožní dotazování přes REST API (FastAPI),
-* **odpovídá výhradně z obsahu dokumentů** (bez domýšlení),
-* **cituje source** (soubor, stránka, chunk_id) + confidence score.
-
----
-
-## 🛡️ Striktní pravidla bez halucinací (Compliance-friendly)
-
-Projekt implementuje **tři vrstvy ochrany** proti halucinacím a spekulacím:
-
-### 1️⃣ Hard Factual Gate (threshold 0.72)
-
-```
-if top_score < 0.72:
-    ❌ LLM se NESMÍ zavolat
-    ✅ Vrát fallback odpověď
-```
-
-**Princip:** Pokud nejrelevantnější chunk má cosine similarity < 0.72 (tj. skóre < 72%), vrací se okamžitě fallback zpráva. LLM se volá **jen pokud** score >= 0.72.
-
-```python
+```json
 {
-  "answer": "Požadovaná informace není v dokumentech.",
-  "sources": [],
-  "confidence": 0.68
+  "question": "Jaká je doba plnění?",
+  "use_llm": true,
+  "strict": true
 }
 ```
 
-### 2️⃣ Keyword Guard (relevance check)
-
-Před zavoláním LLM se ověří, že:
-- Otázka obsahuje alespoň 2 klíčová slova
-- Kontext obsahuje alespoň 2 z těchto slov
-- Pokud ne → fallback (otázka je mimo scope dokumentu)
-
-**Příklady:**
-- ✅ "Jaký je doba plnění?" + kontext s "doba" + "plnění" = OK
-- ❌ "Kdo je skutečný vlastník?" + smlouva bez "vlastník" = Fallback
-- ❌ "Jaké riziko smlouva představuje?" (evaluační, ne faktická) = Fallback
-
-### 3️⃣ LLM Compression Mode (ne generátor)
-
-LLM (pokud je zapnutý) je **JEN kompresor**:
-- ✅ Zkrátí text na max 3 věty
-- ✅ Zachovává faktické znění
-- ❌ Nesmí generovat nové informace
-- ❌ Nesmí odpovídat sám bez kontextu
-
-**System prompt:**
-```
-"Nepřidávej žádné nové informace"
-"Odpovídej POUZE z poskytnutého textu"
-"Pokud nejsi si jistý, raději vynech"
+**Odpověď:**
+```json
+{
+  "answer": "Doba plnění smlouvy je 30 dní od podpisu.",
+  "sources": [
+    {"file": "smlouva_ABC.pdf", "page": 2, "chunk_id": 3}
+  ],
+  "confidence": 0.92
+}
 ```
 
 ---

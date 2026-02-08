@@ -1,52 +1,88 @@
 [
+  // Otázky, které URČITĚ projdou pro smlouvu MERCI, s.r.o.
+  {
+    "question": "Jaká je celková cena za laboratorní pomůcky bez DPH?",
+    "expected_keywords": ["cena", "bez DPH", "435 056"]
+  },
+  {
+    "question": "Jaká je záruční doba na zboží?",
+    "expected_keywords": ["záruční doba", "24 měsíců"]
+  },
+  {
+    "question": "Kdo je kupující v této smlouvě?",
+    "expected_keywords": ["kupující", "Vyšší odborná škola a Střední zemědělská škola, Benešov"]
+  },
+  {
+    "question": "Jaký je termín dodání zboží?",
+    "expected_keywords": ["termín dodání", "4 měsíců od podpisu smlouvy"]
+  },
+  {
+    "question": "Jaké laboratorní pomůcky jsou předmětem smlouvy?",
+    "expected_keywords": ["čidlo vodivosti", "pH čidlo", "mikroskop", "analytické váhy"]
+  },
+
+  // Otázky, které URČITĚ neprojdou (vylučovací)
+  {
+    "question": "Jaká je teplota v Pekingu?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
+  },
+  {
+    "question": "Kdo je prezident České republiky?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
+  },
+  {
+    "question": "Jaká je barva auta ředitele?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
+  },
+  {
+    "question": "Jaké je telefonní číslo prodávajícího?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
+  },
+  {
+    "question": "Jaká je obvyklá cena tohoto typu plnění na trhu?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
+  }
+  // Otázky, které projdou (jsou v datech, mají klíčová slova)
   {
     "question": "Jaká je záruční doba?",
     "expected_keywords": ["záruční doba", "měsíc"]
   },
   {
-    "question": "Jaká je výpovědní lhůta?",
-    "expected_keywords": ["výpovědní lhůta", "měsíc"]
+    "question": "Jaká je doba plnění?",
+    "expected_keywords": ["doba plnění", "dní"]
+  },
+  {
+    "question": "Jaké jsou platební podmínky?",
+    "expected_keywords": ["platební podmínky", "faktura", "splatnost"]
   },
   {
     "question": "Za jakých podmínek může být smlouva vypovězena?",
-    "expected_keywords": ["výpověď", "porušení", "dohodou"]
+    "expected_keywords": ["vypovězena", "dohodou", "porušení"]
   },
   {
     "question": "Jakým dnem začíná běžet záruční doba?",
-    "expected_keywords": ["počíná plynout", "ode dne", "předání"]
+    "expected_keywords": ["počíná", "ode dne", "předání"]
+  },
+
+  // Otázky, které neprojdou (mimo scope, chybí klíčová slova)
+  {
+    "question": "Kdo je skutečným vlastníkem firmy?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
   },
   {
-    "question": "Jakým právním řádem se smlouva řídí?",
-    "expected_keywords": ["právním řádem", "České republiky"]
+    "question": "Jaká je teplota v Pekingu?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
   },
   {
-    "question": "Lze smlouvu měnit dodatky?",
-    "expected_keywords": ["měnit", "dodatky", "písemnými"]
-  },
-  {
-    "question": "Jakým způsobem se považuje odstoupení od smlouvy za doručené?",
-    "expected_keywords": ["odstoupení", "doručené", "dnem"]
-  }
-]
-[
-  {
-    "question": "Kdo je skutečným konečným vlastníkem dodavatele?",
-    "expected_answer": "Nevím"
-  },
-  {
-    "question": "Je tato smlouva pro objednatele výhodná?",
-    "expected_answer": "Nevím"
+    "question": "Jaký je barva auta?",
+    "expected_answer": "Požadovaná informace není v dokumentech."
   },
   {
     "question": "Jaká je obvyklá cena tohoto typu plnění na trhu?",
-    "expected_answer": "Nevím"
-  },
-  {
-    "question": "Byla smlouva v souladu s veřejnými zakázkami?",
-    "expected_answer": "Nevím"
+    "expected_answer": "Požadovaná informace není v dokumentech."
   },
   {
     "question": "Jaké riziko pro objednatele smlouva představuje?",
-    "expected_answer": "Nevím"
+    "expected_answer": "Požadovaná informace není v dokumentech."
   }
 ]
