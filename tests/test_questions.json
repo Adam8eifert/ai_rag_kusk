@@ -1,24 +1,52 @@
 [
   {
-    "question": "Jaká je doba plnění uvedená ve smlouvě?",
-    "expected_keywords": ["doba plnění", "lhůta", "dnů", "měsíc"]
+    "question": "Jaká je záruční doba?",
+    "expected_keywords": ["záruční doba", "měsíc"]
   },
   {
-    "question": "Jaká je cena plnění uvedená ve smlouvě?",
-    "expected_keywords": ["cena", "Kč", "bez DPH", "s DPH"]
+    "question": "Jaká je výpovědní lhůta?",
+    "expected_keywords": ["výpovědní lhůta", "měsíc"]
   },
   {
-    "question": "Jaké sankce jsou uvedeny v případě porušení smlouvy?",
-    "expected_keywords": ["sankce", "pokuta", "smluvní pokuta"]
+    "question": "Za jakých podmínek může být smlouva vypovězena?",
+    "expected_keywords": ["výpověď", "porušení", "dohodou"]
   },
   {
-    "question": "Kdy smlouva nabývá účinnosti?",
-    "expected_keywords": ["účinnost", "nabývá účinnosti", "dnem"]
+    "question": "Jakým dnem začíná běžet záruční doba?",
+    "expected_keywords": ["počíná plynout", "ode dne", "předání"]
   },
   {
-    "question": "Jakým způsobem může být smlouva ukončena?",
-    "expected_keywords": ["ukončení", "výpověď", "odstoupení"]
+    "question": "Jakým právním řádem se smlouva řídí?",
+    "expected_keywords": ["právním řádem", "České republiky"]
+  },
+  {
+    "question": "Lze smlouvu měnit dodatky?",
+    "expected_keywords": ["měnit", "dodatky", "písemnými"]
+  },
+  {
+    "question": "Jakým způsobem se považuje odstoupení od smlouvy za doručené?",
+    "expected_keywords": ["odstoupení", "doručené", "dnem"]
   }
 ]
-
-
+[
+  {
+    "question": "Kdo je skutečným konečným vlastníkem dodavatele?",
+    "expected_answer": "Nevím"
+  },
+  {
+    "question": "Je tato smlouva pro objednatele výhodná?",
+    "expected_answer": "Nevím"
+  },
+  {
+    "question": "Jaká je obvyklá cena tohoto typu plnění na trhu?",
+    "expected_answer": "Nevím"
+  },
+  {
+    "question": "Byla smlouva v souladu s veřejnými zakázkami?",
+    "expected_answer": "Nevím"
+  },
+  {
+    "question": "Jaké riziko pro objednatele smlouva představuje?",
+    "expected_answer": "Nevím"
+  }
+]
