@@ -20,6 +20,48 @@
     "question": "Jaké laboratorní pomůcky jsou předmětem smlouvy?",
     "expected_keywords": ["čidlo vodivosti", "pH čidlo", "mikroskop", "analytické váhy"]
   },
+  // Otázky, které URČITĚ projdou pro smlouvu HELAGO-CZ, s.r.o.
+  {
+    "question": "Jaká je celková cena za učební pomůcky bez DPH?",
+    "expected_keywords": ["cena", "bez DPH", "950.000"]
+  },
+  {
+    "question": "Jaká je záruční doba na učební pomůcky?",
+    "expected_keywords": ["záruční doba", "24 měsíců"]
+  },
+  {
+    "question": "Kdo je kupující v této smlouvě?",
+    "expected_keywords": ["kupující", "Vyšší odborná škola a Střední zemědělská škola, Benešov"]
+  },
+  {
+    "question": "Jaký je termín dodání učebních pomůcek?",
+    "expected_keywords": ["termín dodání", "5 měsíců od podpisu smlouvy"]
+  },
+  {
+    "question": "Jaké učební pomůcky jsou předmětem smlouvy?",
+    "expected_keywords": ["výukový model koně", "model pohlavních orgánů klisny", "Smart model reprodukčních orgánů krávy"]
+  },
+  // Otázky, které URČITĚ projdou pro SOD Terapeutické komunity
+  {
+    "question": "Jaká je celková cena za opravu oplocení bez DPH?",
+    "expected_keywords": ["cena", "bez DPH", "1.390.027,25"]
+  },
+  {
+    "question": "Jaká je záruční doba na dílo?",
+    "expected_keywords": ["záruční doba", "36 měsíců"]
+  },
+  {
+    "question": "Kdo je objednatel v této smlouvě?",
+    "expected_keywords": ["objednatel", "Zařízení sociální intervence Kladno"]
+  },
+  {
+    "question": "Jaký je termín dokončení díla?",
+    "expected_keywords": ["termín dokončení", "21.11.2025"]
+  },
+  {
+    "question": "Jaké práce jsou předmětem smlouvy?",
+    "expected_keywords": ["oprava oplocení", "stavební práce", "Technická specifikace"]
+  },
 
   // Otázky, které URČITĚ neprojdou (vylučovací)
   {
